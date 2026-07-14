@@ -34,10 +34,11 @@ def current_os():
 # Human readable, copy-paste install guidance per operating system.
 INSTALL_HINTS = {
     LINUX: (
-        "libfuse is required.\n"
-        "  Debian / Ubuntu : sudo apt-get install fuse3 libfuse2\n"
+        "libfuse (the FUSE 2 runtime) is required; fusepy uses the FUSE 2 ABI.\n"
+        "  Debian / Ubuntu : sudo apt-get install libfuse2t64 fuse\n"
+        "                    (older releases: sudo apt-get install libfuse2 fuse)\n"
         "  Fedora / RHEL   : sudo dnf install fuse fuse-libs\n"
-        "  Arch            : sudo pacman -S fuse2 fuse3\n"
+        "  Arch            : sudo pacman -S fuse2\n"
         "Also ensure your user may mount FUSE volumes (the 'fuse' group or\n"
         "'user_allow_other' in /etc/fuse.conf if you pass --allow-other)."
     ),
@@ -67,13 +68,23 @@ def _native_library_present():
     system = current_os()
 
     if system in (LINUX, MACOS):
-        # ctypes.util.find_library resolves libfuse / libfuse3 on Linux and
-        # the macFUSE dylib on macOS.
-        for name in ("fuse3", "fuse", "osxfuse"):
+        # fusepy (our binding) uses the FUSE 2 ABI, so the library that must be
+        # loadable is libfuse.so.2 on Linux or the macFUSE dylib on macOS.
+        # Note this is FUSE 2, not FUSE 3: a box with only libfuse3 installed
+        # will fail at mount even though find_library("fuse3") would succeed,
+        # so we test the actual FUSE 2 library first.
+        for candidate in ("libfuse.so.2", "libfuse.dylib", "libfuse.2.dylib"):
+            try:
+                ctypes.CDLL(candidate)
+                return True, "loaded " + candidate
+            except OSError:
+                continue
+        # Fall back to the loader search path (dev symlinks, unusual layouts).
+        for name in ("fuse", "osxfuse"):
             found = ctypes.util.find_library(name)
             if found:
                 return True, "found " + str(found)
-        return False, "libfuse not found on the loader search path"
+        return False, "libfuse (FUSE 2 ABI, libfuse.so.2) not found"
 
     if system == WINDOWS:
         # WinFsp exposes winfsp-x64.dll / winfsp-x86.dll under its bin
