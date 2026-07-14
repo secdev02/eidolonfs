@@ -76,24 +76,66 @@ def _native_library_present():
         return False, "libfuse not found on the loader search path"
 
     if system == WINDOWS:
-        # WinFsp exposes winfsp-x64.dll / winfsp-x86.dll. The refuse and
-        # fusepy bindings look for it under the WinFsp install directory,
-        # discoverable through the WinFsp registry key or PATH.
-        dll = "winfsp-x64.dll" if sys.maxsize > 2 ** 32 else "winfsp-x86.dll"
-        try:
-            ctypes.WinDLL(dll)
-            return True, "loaded " + dll
-        except OSError:
-            # Fall back to the documented install path.
-            candidate = os.path.join(
-                os.environ.get("ProgramFiles", "C:\\Program Files"),
-                "WinFsp", "bin", dll,
-            )
-            if os.path.exists(candidate):
-                return True, "found " + candidate
-            return False, "WinFsp (" + dll + ") not found"
+        # WinFsp exposes winfsp-x64.dll / winfsp-x86.dll under its bin
+        # directory. That directory is not on PATH by default, so we resolve it
+        # the same way the refuse and fusepy bindings do: the FUSE_LIBRARY_PATH
+        # override, then the WinFsp install directory recorded in the registry,
+        # then the default install locations. WinFsp installs under
+        # "Program Files (x86)" even on 64-bit Windows.
+        arch = "x64" if sys.maxsize > 0xFFFFFFFF else "x86"
+        dll_name = "winfsp-" + arch + ".dll"
+
+        candidates = []
+        override = os.environ.get("FUSE_LIBRARY_PATH")
+        if override:
+            candidates.append(override)
+
+        install_dir = _winfsp_install_dir()
+        if install_dir:
+            candidates.append(os.path.join(install_dir, "bin", dll_name))
+
+        for pf_env in ("ProgramFiles(x86)", "ProgramW6432", "ProgramFiles"):
+            base = os.environ.get(pf_env)
+            if base:
+                candidates.append(os.path.join(base, "WinFsp", "bin", dll_name))
+
+        # Last resort: bare name, in case the bin directory is already on PATH.
+        candidates.append(dll_name)
+
+        for candidate in candidates:
+            try:
+                ctypes.WinDLL(candidate)
+                return True, "loaded " + candidate
+            except OSError:
+                continue
+        return False, "WinFsp (" + dll_name + ") not found"
 
     return False, "unsupported platform: " + str(system)
+
+
+def _winfsp_install_dir():
+    """Read the WinFsp install directory from the registry, or None.
+
+    WinFsp records its location under HKLM\\SOFTWARE\\WinFsp (stored in the
+    32-bit WOW6432Node view on 64-bit Windows). This is the authoritative
+    source the FUSE bindings themselves consult.
+    """
+    try:
+        import winreg
+    except ImportError:
+        return None
+    for flag in (winreg.KEY_WOW64_32KEY, winreg.KEY_WOW64_64KEY):
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WinFsp",
+                0, winreg.KEY_READ | flag,
+            ) as key:
+                value, _ = winreg.QueryValueEx(key, "InstallDir")
+                if value:
+                    return value
+        except OSError:
+            continue
+    return None
 
 
 def preflight(exit_on_failure=True):
