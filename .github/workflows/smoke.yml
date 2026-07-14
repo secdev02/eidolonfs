@@ -1,0 +1,65 @@
+name: smoke
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Cross-platform unit tests. These never mount a filesystem, so they run
+  # everywhere without the native FUSE driver.
+  unit:
+    name: unit (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.9", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install package with test extras
+        run: python -m pip install --upgrade pip && python -m pip install ".[test]"
+
+      - name: Run unit tests
+        run: python -m pytest -q -m "not mount"
+
+      - name: CLI smoke
+        run: |
+          eidolonfs --version
+          eidolonfs sample
+
+  # Real end-to-end mount test. Linux runners provide /dev/fuse and allow FUSE
+  # mounts, so this actually mounts the honeypot and asserts the logging policy.
+  mount-linux:
+    name: mount (ubuntu, py3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install native FUSE driver
+        run: |
+          sudo apt-get update
+          # refuse and fusepy use the FUSE 2 ABI. libfuse2t64 is the package
+          # name on Ubuntu 24.04; libfuse2 on older releases. fuse provides the
+          # fusermount helper used to mount and unmount.
+          sudo apt-get install -y libfuse2t64 fuse \
+            || sudo apt-get install -y libfuse2 fuse
+
+      - name: Install package with test extras
+        run: python -m pip install --upgrade pip && python -m pip install ".[test]"
+
+      - name: Run mount smoke test
+        run: python -m pytest -q -m "mount" -rs

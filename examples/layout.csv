@@ -1,0 +1,27 @@
+# EidolonFS layout file.
+#
+# Rules:
+#   - Parents must be declared before their children.
+#   - Lines starting with # are comments. Blank lines are ignored.
+#   - The root "/" is implicit and needs no row.
+#
+# Columns:
+#   path         absolute virtual path, POSIX style
+#   is_dir       1 for directory, 0 for file
+#   size         declared byte size for files (content is sized to match)
+#   mtime        Unix timestamp (seconds)
+#   mode         octal permissions, blank = 0755 dir / 0644 file
+#   decoy_class  alert tag: credential, financial, pii, source, ...
+#   content_ref  template key or seed path, blank = synthesize by extension
+path,is_dir,size,mtime,mode,decoy_class,content_ref
+/finance,1,,1704067200,0755,,
+/finance/payroll_2024.csv,0,8192,1704067200,0640,financial,csv
+/finance/q4_forecast.xlsx,0,26480,1704067200,0640,financial,
+/hr,1,,1704067200,0755,,
+/hr/employees.csv,0,4096,1704067200,0640,pii,csv
+/secrets,1,,1704067200,0700,,
+/secrets/id_rsa,0,2048,1704067200,0600,credential,pem
+/secrets/aws.env,0,512,1704067200,0600,credential,env
+/secrets/api_keys.json,0,1024,1704067200,0600,credential,json
+/backups,1,,1704067200,0755,,
+/backups/db_dump.sql,0,1048576,1704067200,0640,financial,txt

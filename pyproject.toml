@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "EidolonFS"
+version = "2.0.0"
+description = "Cross-platform FUSE honeypot filesystem that alerts on decoy file open and copy"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "EidolonFS" }]
+keywords = ["honeypot", "fuse", "security", "deception", "decoy", "canary"]
+
+# All runtime dependencies are free and open source.
+#   refuse  : ISC license, ctypes bindings for libfuse / macFUSE / WinFsp
+#   psutil  : BSD-3-Clause, cross-platform process attribution
+# The native FUSE driver (libfuse / macFUSE / WinFsp) is NOT a pip package.
+# It installs separately per OS. See platform_support.py and the README.
+dependencies = [
+    "refuse>=0.0.3",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+# fusepy is an alternate binding kept as a fallback. Same API surface.
+fusepy = ["fusepy>=3.0.1"]
+test = ["pytest>=7"]
+
+[project.scripts]
+eidolonfs = "eidolonfs.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+eidolonfs = ["../examples/*.csv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "mount: end-to-end test that performs a real FUSE mount (Linux with libfuse only)",
+]
