@@ -6,6 +6,11 @@ documents) described by a CSV, and raises a verbose, attributed alert the moment
 someone opens, reads, or copies one. Directory listing and stat calls stay
 silent, because deliberately opening a decoy is the signal worth catching.
 
+```
+An eidolon is a phantom double, an insubstantial image of something real, which is exactly what EidolonFS serves: files that look like genuine secrets but are entirely illusory, and that quietly raise the alarm the moment anyone touches them.
+```
+
+
 Runs on Linux, macOS, and Windows from one codebase. Every dependency is free
 and open source.
 
