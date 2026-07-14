@@ -9,3 +9,4 @@ dist/
 *.tar.gz
 *.zip
 eidolonfs-events.jsonl
+.DS_Store

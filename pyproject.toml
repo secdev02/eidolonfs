@@ -17,14 +17,18 @@ keywords = ["honeypot", "fuse", "security", "deception", "decoy", "canary"]
 #   psutil  : BSD-3-Clause, cross-platform process attribution
 # The native FUSE driver (libfuse / macFUSE / WinFsp) is NOT a pip package.
 # It installs separately per OS. See platform_support.py and the README.
+#
+# fusepy is the primary binding: it works on Linux (libfuse), macOS (macFUSE),
+# and Windows (WinFsp). refuse is available as an optional fallback but has a
+# Windows import bug in some releases, so it is not a default dependency.
 dependencies = [
-    "refuse>=0.0.3",
+    "fusepy>=3.0.1",
     "psutil>=5.9",
 ]
 
 [project.optional-dependencies]
-# fusepy is an alternate binding kept as a fallback. Same API surface.
-fusepy = ["fusepy>=3.0.1"]
+# Alternate binding, same API surface. Not recommended on Windows.
+refuse = ["refuse>=0.0.3"]
 test = ["pytest>=7"]
 
 [project.scripts]

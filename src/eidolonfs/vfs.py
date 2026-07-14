@@ -15,15 +15,42 @@ operator deliberately configured a seed root.
 from errno import EACCES, ENOENT, EROFS
 import threading
 
-# Prefer refuse (maintained cross-platform fork). Fall back to fusepy. Both
-# expose the same high-level API: FUSE, Operations, FuseOSError, and the
-# fuse_get_context helper that yields the caller's (uid, gid, pid).
-try:
-    from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
-    _BINDING = "refuse"
-except ImportError:  # pragma: no cover
-    from fuse import FUSE, FuseOSError, Operations, fuse_get_context
-    _BINDING = "fusepy"
+# Load a FUSE binding. We prefer fusepy, which works across Linux (libfuse),
+# macOS (macFUSE), and Windows (WinFsp). refuse is a fallback. Both expose the
+# same high-level API: FUSE, Operations, FuseOSError, and fuse_get_context,
+# which yields the caller's (uid, gid, pid).
+#
+# A binding can fail to import for reasons other than ImportError. For example,
+# some refuse releases reference sys without importing it in their Windows path
+# handling, which raises NameError at import time. So we catch broadly and try
+# the next binding rather than crashing on the first one.
+FUSE = None
+FuseOSError = None
+Operations = None
+fuse_get_context = None
+_BINDING = None
+_binding_errors = []
+
+for _module_name, _label in (("fuse", "fusepy"), ("refuse.high", "refuse")):
+    try:
+        _mod = __import__(
+            _module_name,
+            fromlist=["FUSE", "FuseOSError", "Operations", "fuse_get_context"],
+        )
+        FUSE = _mod.FUSE
+        FuseOSError = _mod.FuseOSError
+        Operations = _mod.Operations
+        fuse_get_context = _mod.fuse_get_context
+        _BINDING = _label
+        break
+    except Exception as _exc:  # noqa: BLE001
+        _binding_errors.append(_label + ": " + repr(_exc))
+
+if _BINDING is None:
+    raise ImportError(
+        "No working FUSE binding could be imported. Install fusepy with "
+        "'pip install fusepy'. Attempts: " + "; ".join(_binding_errors)
+    )
 
 from . import events
 from . import layout as layout_module
