@@ -12,6 +12,10 @@ which is exactly what EidolonFS serves: files that look like genuine secrets
 but are entirely illusory, and that quietly raise the alarm the moment anyone touches them.
 ```
 
+<p align="center">
+  <img src="assets/eidolonfs_project.png" alt="EidolonFS — Fake Files. Real Security." width="420" />
+</p>
+
 
 Runs on Linux, macOS, and Windows from one codebase. Every dependency is free
 and open source.
